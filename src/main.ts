@@ -1554,6 +1554,20 @@ function updateEnemies(time: number) {
     const evadeX = Math.sin(e.flyAngle) * 0.3;
     const evadeY = Math.cos(e.flyAngle * 0.7) * 0.2;
 
+    // Check if enemy is in player's back camera view (being targeted from behind)
+    // Player's forward direction based on yaw
+    const playerForward = new THREE.Vector3(
+      -Math.sin(yaw),
+      0,
+      -Math.cos(yaw)
+    );
+    // Direction from player to enemy
+    const playerToEnemy = e.mesh.position.clone().sub(camera.position).normalize();
+    // If dot product is negative, enemy is behind the player
+    const enemyBehindPlayer = playerForward.dot(playerToEnemy) < -0.3;
+    // Enemy should evade if player is using back camera and enemy is in that view
+    const isTargetedByBackCamera = isBackCamera && enemyBehindPlayer && dist < 100;
+
     // Hiding behavior (only for non-boss enemies)
     e.hideTimer -= 0.016;
 
@@ -1589,6 +1603,26 @@ function updateEnemies(time: number) {
         e.targetBuilding = null;
         e.hideTimer = 5 + Math.random() * 5; // Wait before hiding again
       }
+    } else if (isTargetedByBackCamera) {
+      // EVASIVE MANEUVER! Enemy is being targeted by back camera - escape!
+      const evadeSpeed = speed * 3;
+
+      // Dodge perpendicular to the player's line of sight
+      const dodgeDir = Math.sin(e.flyAngle * 10) > 0 ? 1 : -1;
+      const perpX = -toPlayer.z * dodgeDir;
+      const perpZ = toPlayer.x * dodgeDir;
+
+      // Move sideways and away from player's back camera view
+      e.mesh.position.x += perpX * evadeSpeed + toPlayer.x * evadeSpeed * 0.3;
+      e.mesh.position.z += perpZ * evadeSpeed + toPlayer.z * evadeSpeed * 0.3;
+
+      // Rapid altitude change to escape targeting
+      e.mesh.position.y += (Math.sin(e.flyAngle * 8) * 3);
+
+      // Try to get out of back camera view by moving to player's side
+      const escapeAngle = yaw + (dodgeDir * Math.PI / 2); // Move to player's side
+      e.mesh.position.x += Math.sin(escapeAngle) * evadeSpeed * 0.5;
+      e.mesh.position.z += Math.cos(escapeAngle) * evadeSpeed * 0.5;
     } else {
       // Normal movement
       if (dist > 30) {
