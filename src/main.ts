@@ -382,10 +382,153 @@ interface Enemy {
   hiding: boolean;
   hideTimer: number;
   targetBuilding: { x: number; z: number; height: number } | null;
+  visualsUpdated: boolean; // Track if visuals have been updated for current wave
+  aura?: THREE.Mesh; // Aura effect for later waves
+  effectParticles?: THREE.Points; // Fire/lightning effect
 }
 
 const enemies: Enemy[] = [];
 const ACTIVATION_DISTANCE = 100;
+
+// ========== Wave-based Enemy Visual Updates ==========
+function updateEnemyVisuals(enemy: Enemy) {
+  const wave = gameState.waveNumber;
+  const intensity = Math.min(wave / 5, 1); // 0 to 1 based on wave
+
+  // Traverse all meshes in the enemy group
+  enemy.mesh.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+      const mat = child.material;
+
+      // 1. Color changes - darken and add red tint for later waves
+      if (mat.color) {
+        const originalHSL = { h: 0, s: 0, l: 0 };
+        mat.color.getHSL(originalHSL);
+        // Shift towards red and darken
+        const newHue = originalHSL.h * (1 - intensity * 0.3) + 0 * intensity * 0.3; // Shift to red
+        const newLightness = originalHSL.l * (1 - intensity * 0.3); // Darken
+        mat.color.setHSL(newHue, Math.min(originalHSL.s + intensity * 0.3, 1), newLightness);
+      }
+
+      // Add emissive glow for later waves
+      if (wave >= 3) {
+        mat.emissive = new THREE.Color(0xff0000);
+        mat.emissiveIntensity = intensity * 0.3;
+      }
+    }
+  });
+
+  // 2. Size increase for later waves
+  const scaleBonus = 1 + intensity * 0.3; // Up to 30% larger
+  enemy.mesh.scale.setScalar(scaleBonus);
+
+  // 3. Eye expression changes - find and modify pupils
+  enemy.mesh.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      const mat = child.material as THREE.MeshStandardMaterial;
+      // Check if this is a pupil (small, dark sphere)
+      if (mat.color && child.geometry instanceof THREE.SphereGeometry) {
+        const params = child.geometry.parameters;
+        if (params.radius < 0.5) {
+          // This is likely a pupil - make it red and larger for later waves
+          mat.color.setHex(wave >= 3 ? 0xff0000 : 0x220000);
+          mat.emissive = new THREE.Color(wave >= 4 ? 0xff0000 : 0x000000);
+          mat.emissiveIntensity = wave >= 4 ? 0.8 : 0;
+          // Angry eyes - make pupils slightly larger
+          child.scale.setScalar(1 + intensity * 0.5);
+        }
+        // Eye whites - add bloodshot effect
+        if (params.radius > 0.5 && params.radius < 1) {
+          if (wave >= 4) {
+            mat.color.lerp(new THREE.Color(0xffcccc), intensity * 0.5);
+          }
+        }
+      }
+    }
+  });
+
+  // 4. Add aura for wave 3+
+  if (wave >= 3 && !enemy.aura) {
+    const auraGeom = new THREE.SphereGeometry(12, 16, 12);
+    const auraMat = new THREE.MeshBasicMaterial({
+      color: wave >= 5 ? 0xff0000 : 0xff6600,
+      transparent: true,
+      opacity: 0.15 + intensity * 0.1,
+      side: THREE.BackSide,
+    });
+    enemy.aura = new THREE.Mesh(auraGeom, auraMat);
+    enemy.mesh.add(enemy.aura);
+  }
+
+  // 5. Add fire/lightning particles for wave 4+
+  if (wave >= 4 && !enemy.effectParticles) {
+    const particleCount = 20;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 10;
+      positions[i + 1] = (Math.random() - 0.5) * 10;
+      positions[i + 2] = (Math.random() - 0.5) * 10;
+
+      // Fire colors (orange to red) or lightning (blue to white)
+      if (wave >= 5) {
+        // Lightning - blue/white
+        colors[i] = 0.5 + Math.random() * 0.5;
+        colors[i + 1] = 0.5 + Math.random() * 0.5;
+        colors[i + 2] = 1;
+      } else {
+        // Fire - orange/red
+        colors[i] = 1;
+        colors[i + 1] = Math.random() * 0.5;
+        colors[i + 2] = 0;
+      }
+    }
+
+    const particleGeom = new THREE.BufferGeometry();
+    particleGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const particleMat = new THREE.PointsMaterial({
+      size: 1.5,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+    });
+
+    enemy.effectParticles = new THREE.Points(particleGeom, particleMat);
+    enemy.mesh.add(enemy.effectParticles);
+  }
+
+  enemy.visualsUpdated = true;
+}
+
+// Animate enemy effects (call in update loop)
+function animateEnemyEffects(enemy: Enemy, time: number) {
+  // Animate aura
+  if (enemy.aura) {
+    enemy.aura.scale.setScalar(1 + Math.sin(time * 3) * 0.1);
+    (enemy.aura.material as THREE.MeshBasicMaterial).opacity = 0.1 + Math.sin(time * 5) * 0.05;
+  }
+
+  // Animate particles
+  if (enemy.effectParticles) {
+    const positions = enemy.effectParticles.geometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] += (Math.random() - 0.5) * 0.3;
+      positions[i + 1] += Math.random() * 0.2;
+      positions[i + 2] += (Math.random() - 0.5) * 0.3;
+
+      // Reset if too far
+      if (Math.abs(positions[i]) > 8) positions[i] = (Math.random() - 0.5) * 5;
+      if (positions[i + 1] > 8) positions[i + 1] = -3;
+      if (Math.abs(positions[i + 2]) > 8) positions[i + 2] = (Math.random() - 0.5) * 5;
+    }
+    enemy.effectParticles.geometry.attributes.position.needsUpdate = true;
+    enemy.effectParticles.rotation.y += 0.02;
+  }
+}
 
 // Font will be loaded here
 let loadedFont: Font | null = null;
@@ -601,6 +744,7 @@ function createJapaneseEnemy(char: string, x: number, y: number, z: number, colo
     hideTimer: 0,
     targetBuilding: null,
     flySpeed: 0.3 + Math.random() * 0.5,
+    visualsUpdated: false,
   });
 }
 
@@ -641,6 +785,7 @@ function createLetterEnemy(char: string, x: number, y: number, z: number, color:
     hideTimer: 0,
     targetBuilding: null,
     flySpeed: 0.3 + Math.random() * 0.5,
+    visualsUpdated: false,
   });
 }
 
@@ -707,7 +852,7 @@ function createEnemy(type: 'drone' | 'hunter' | 'tank' | 'boss' = 'drone') {
   mesh.position.set(Math.cos(angle) * dist, y, Math.sin(angle) * dist);
   scene.add(mesh);
 
-  enemies.push({
+  const enemy: Enemy = {
     mesh,
     health,
     type,
@@ -720,7 +865,11 @@ function createEnemy(type: 'drone' | 'hunter' | 'tank' | 'boss' = 'drone') {
     hiding: false,
     hideTimer: 0,
     targetBuilding: null,
-  });
+    visualsUpdated: false,
+  };
+  // Apply wave-based visuals immediately for non-dormant enemies
+  updateEnemyVisuals(enemy);
+  enemies.push(enemy);
   gameState.waveEnemies++;
 }
 
@@ -1541,10 +1690,15 @@ function updateEnemies(time: number) {
       // Wake up if player is close enough
       if (dist < ACTIVATION_DISTANCE) {
         e.dormant = false;
+        // Apply wave-based visuals when waking up
+        updateEnemyVisuals(e);
         playSound(200 + Math.random() * 100, 0.2, 'sawtooth', 0.15);
       }
       continue;
     }
+
+    // Animate enemy effects (aura, particles)
+    animateEnemyEffects(e, time);
 
     // Active: fly towards player
     const speed = e.type === 'hunter' ? 0.8 : e.type === 'tank' ? 0.4 : e.type === 'boss' ? 0.3 : 0.5;
