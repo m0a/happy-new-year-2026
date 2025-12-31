@@ -19,8 +19,9 @@ const gameState: GameState = {
   waveNumber: 1,
 };
 
-// ========== Mobile Detection ==========
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+// ========== Mobile/Touch Detection ==========
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const isMobile = isTouchDevice || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 // ========== Audio ==========
 let audioContext: AudioContext | null = null;
@@ -895,7 +896,6 @@ function createMobileControls() {
     #camera-btn { bottom:120px; right:110px; background:rgba(0,255,255,0.3); border:3px solid rgba(0,255,255,0.7); color:#0ff; }
     #camera-btn.back { background:rgba(255,0,255,0.4); border-color:rgba(255,0,255,0.8); color:#f0f; }
     #shoot-btn.active, #boost-btn.active, #brake-btn.active, #camera-btn.active { opacity:0.8; transform:scale(0.95); }
-    @media (min-width:768px) { #mobile-controls { display:none; } }
   `;
   document.head.appendChild(style);
 
