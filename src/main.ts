@@ -1616,6 +1616,34 @@ function updateBullets() {
       continue;
     }
 
+    // Check collision with buildings - bullets don't pass through
+    let hitBuilding = false;
+    for (const building of buildings) {
+      const bPos = building.position;
+      const bGeo = building.geometry as THREE.BoxGeometry;
+      const halfW = bGeo.parameters.width / 2;
+      const halfD = bGeo.parameters.depth / 2;
+      const height = bGeo.parameters.height;
+
+      if (
+        b.mesh.position.x > bPos.x - halfW &&
+        b.mesh.position.x < bPos.x + halfW &&
+        b.mesh.position.z > bPos.z - halfD &&
+        b.mesh.position.z < bPos.z + halfD &&
+        b.mesh.position.y < GROUND_LEVEL + height &&
+        b.mesh.position.y > GROUND_LEVEL
+      ) {
+        hitBuilding = true;
+        break;
+      }
+    }
+
+    if (hitBuilding) {
+      scene.remove(b.mesh);
+      bullets.splice(i, 1);
+      continue;
+    }
+
     if (b.isPlayer) {
       for (let j = enemies.length - 1; j >= 0; j--) {
         const e = enemies[j];
