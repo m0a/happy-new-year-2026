@@ -2,6 +2,18 @@ import * as THREE from 'three';
 import { FontLoader, Font } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 
+// ========== Security Utils ==========
+function escapeHtml(str: string): string {
+  const escapeMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return str.replace(/[&<>"']/g, c => escapeMap[c] || c);
+}
+
 // ========== Game State ==========
 interface GameState {
   score: number;
@@ -1353,10 +1365,10 @@ async function showGameOverScreen(title: string, emoji: string, bgColor: string,
     leaderboard.style.display = 'block';
     leaderboardList.innerHTML = scores.map((s, i) => {
       const dateStr = s.created_at ? formatDateTime(s.created_at) : '';
-      const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '10px' : '12px'}; margin-left:20px;">"${s.comment}"</div>` : '';
+      const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '10px' : '12px'}; margin-left:20px;">"${escapeHtml(s.comment)}"</div>` : '';
       return `<div style="margin:8px 0;">
         <span style="color:#888; font-size:${isMobile ? '10px' : '12px'};">${dateStr}</span>
-        ${i + 1}. ${s.player_name} - ${s.score} (Wave ${s.wave})
+        ${i + 1}. ${escapeHtml(s.player_name)} - ${s.score} (Wave ${s.wave})
         ${commentStr}
       </div>`;
     }).join('');
@@ -1419,10 +1431,10 @@ async function showGameOverScreen(title: string, emoji: string, bgColor: string,
         leaderboardList.innerHTML = newScores.map((s, i) => {
           const isMe = s.player_name === name && s.score === gameState.score;
           const dateStr = s.created_at ? formatDateTime(s.created_at) : '';
-          const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '10px' : '12px'}; margin-left:20px;">"${s.comment}"</div>` : '';
+          const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '10px' : '12px'}; margin-left:20px;">"${escapeHtml(s.comment)}"</div>` : '';
           return `<div style="margin:8px 0; ${isMe ? 'color:#0f0;' : ''}">
             <span style="color:#888; font-size:${isMobile ? '10px' : '12px'};">${dateStr}</span>
-            ${i + 1}. ${s.player_name} - ${s.score} (Wave ${s.wave})
+            ${i + 1}. ${escapeHtml(s.player_name)} - ${s.score} (Wave ${s.wave})
             ${commentStr}
           </div>`;
         }).join('');
@@ -2038,10 +2050,10 @@ async function showStartLeaderboard() {
         <div style="font-size:${isMobile ? '11px' : '14px'}; color:#0f0;">
           ${scores.slice(0, 5).map((s, i) => {
             const dateStr = s.created_at ? formatDateTime(s.created_at) : '';
-            const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '9px' : '11px'}; margin-left:15px;">"${s.comment}"</div>` : '';
+            const commentStr = s.comment ? `<div style="color:#888; font-size:${isMobile ? '9px' : '11px'}; margin-left:15px;">"${escapeHtml(s.comment)}"</div>` : '';
             return `<div style="margin:8px 0;">
               <span style="color:#888;">${dateStr}</span>
-              ${i + 1}. ${s.player_name} - ${s.score}
+              ${i + 1}. ${escapeHtml(s.player_name)} - ${s.score}
               ${commentStr}
             </div>`;
           }).join('')}
