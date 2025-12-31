@@ -33,15 +33,17 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const checkScore = url.searchParams.get('check');
       const groupId = url.searchParams.get('g');
 
-      // Get top 10 scores - filter by group if specified, otherwise show all
+      // Get top 10 scores - filter by group + default if specified, otherwise show default only
       let result;
       if (groupId) {
+        // Show group scores + default scores (group_id IS NULL)
         result = await env.DB.prepare(
-          'SELECT player_name, score, wave, comment, created_at FROM scores WHERE group_id = ? ORDER BY score DESC LIMIT 10'
+          'SELECT player_name, score, wave, comment, created_at FROM scores WHERE group_id = ? OR group_id IS NULL ORDER BY score DESC LIMIT 10'
         ).bind(groupId).all();
       } else {
+        // Show only default scores (no group)
         result = await env.DB.prepare(
-          'SELECT player_name, score, wave, comment, created_at FROM scores ORDER BY score DESC LIMIT 10'
+          'SELECT player_name, score, wave, comment, created_at FROM scores WHERE group_id IS NULL ORDER BY score DESC LIMIT 10'
         ).all();
       }
 

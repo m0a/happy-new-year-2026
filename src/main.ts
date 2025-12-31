@@ -998,6 +998,7 @@ let pointerLocked = false;
 // Mobile
 let moveJoystickX = 0, moveJoystickY = 0;
 let mobileShoot = false, mobileBoost = false, mobileBrake = false;
+let invertY = false; // Joystick Y-axis invert option
 let moveTouchId: number | null = null;
 
 document.addEventListener('keydown', (e) => {
@@ -1482,7 +1483,7 @@ function updatePlayer() {
   // Flight controls
   if (isMobile) {
     // Joystick controls pitch and roll
-    pitch += moveJoystickY * pitchSpeed;
+    pitch += moveJoystickY * pitchSpeed * (invertY ? -1 : 1);
     roll = -moveJoystickX * 0.5; // Visual roll
     yaw -= moveJoystickX * yawSpeed;
   } else {
@@ -1969,6 +1970,58 @@ window.addEventListener('resize', () => {
 
 // ========== Start ==========
 const startScreen = document.getElementById('start-screen')!;
+
+// Create settings UI on start screen
+function createStartScreenSettings() {
+  const settingsDiv = document.createElement('div');
+  settingsDiv.id = 'start-settings';
+  settingsDiv.style.cssText = 'margin-top:20px; text-align:center;';
+  settingsDiv.innerHTML = `
+    <div style="display:inline-flex; align-items:center; gap:10px; padding:10px 20px; background:rgba(255,255,255,0.1); border-radius:8px; cursor:pointer;" id="invert-toggle">
+      <span style="color:#fff; font-size:${isMobile ? '14px' : '16px'};">操作反転 (↑で上昇)</span>
+      <div id="invert-switch" style="width:50px; height:26px; background:#444; border-radius:13px; position:relative; transition:background 0.3s;">
+        <div id="invert-knob" style="width:22px; height:22px; background:#fff; border-radius:50%; position:absolute; top:2px; left:2px; transition:left 0.3s;"></div>
+      </div>
+    </div>
+  `;
+
+  // Insert before the "CLICK TO START" text
+  const clickText = startScreen.querySelector('p');
+  if (clickText) {
+    startScreen.insertBefore(settingsDiv, clickText);
+  }
+
+  // Toggle event
+  const toggle = document.getElementById('invert-toggle')!;
+  const switchEl = document.getElementById('invert-switch')!;
+  const knob = document.getElementById('invert-knob')!;
+
+  function doToggle() {
+    invertY = !invertY;
+    if (invertY) {
+      switchEl.style.background = '#0f0';
+      knob.style.left = '26px';
+    } else {
+      switchEl.style.background = '#444';
+      knob.style.left = '2px';
+    }
+  }
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation(); // Don't start game when clicking toggle
+    if (!isMobile) {
+      doToggle();
+    }
+  });
+
+  toggle.addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    doToggle();
+  });
+}
+
+createStartScreenSettings();
 
 // Show leaderboard on start screen
 async function showStartLeaderboard() {
