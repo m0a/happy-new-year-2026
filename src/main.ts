@@ -130,8 +130,8 @@ function createPipFrame() {
   pipFrame.innerHTML = '<span>FRONT</span>';
   pipFrame.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    left: 20px;
+    top: 20px;
+    right: 20px;
     width: ${isMobile ? '120px' : '200px'};
     height: ${isMobile ? '90px' : '150px'};
     border: 3px solid #0ff;
@@ -1713,11 +1713,11 @@ function animate() {
     pipCamera.rotation.x = pitch;
     pipCamera.rotation.z = roll;
 
-    // Render PIP in bottom-left corner
-    const pipX = 20;
-    const pipY = 20;
+    // Render PIP in top-right corner
     const pipW = isMobile ? 120 : pipSize.width;
     const pipH = isMobile ? 90 : pipSize.height;
+    const pipX = window.innerWidth - pipW - 20;
+    const pipY = window.innerHeight - pipH - 20;
 
     renderer.setScissorTest(true);
     renderer.setScissor(pipX, pipY, pipW, pipH);
