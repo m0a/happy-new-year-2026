@@ -1,0 +1,11 @@
+{
+  "name": "happy-new-year-2026",
+  "pages_build_output_dir": "dist",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sky-fighter-scores",
+      "database_id": "849a4e70-ac22-4a07-9983-27d106287b6c"
+    }
+  ]
+}
