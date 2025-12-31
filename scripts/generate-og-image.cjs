@@ -55,10 +55,10 @@ ctx.fillText('2026', width / 2, 340);
 
 // Subtitle
 ctx.fillStyle = '#00ffff';
-ctx.font = 'bold 36px sans-serif';
+ctx.font = 'bold 40px sans-serif';
 ctx.shadowColor = '#00ffff';
 ctx.shadowBlur = 15;
-ctx.fillText('3D フライトシューティングゲーム', width / 2, 480);
+ctx.fillText('3D FLIGHT SHOOTING GAME', width / 2, 480);
 
 // Play instruction
 ctx.fillStyle = '#ffffff';
