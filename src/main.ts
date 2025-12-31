@@ -1605,24 +1605,42 @@ function updateEnemies(time: number) {
       }
     } else if (isTargetedByBackCamera) {
       // EVASIVE MANEUVER! Enemy is being targeted by back camera - escape!
-      const evadeSpeed = speed * 3;
+      // Evasion intensity scales with wave number (wave 1 = minimal, wave 5+ = maximum)
+      const waveMultiplier = Math.min(gameState.waveNumber / 5, 1); // 0.2 at wave 1, 1.0 at wave 5+
+      const evadeSpeed = speed * (1 + waveMultiplier * 2); // 1x to 3x speed
 
-      // Dodge perpendicular to the player's line of sight
-      const dodgeDir = Math.sin(e.flyAngle * 10) > 0 ? 1 : -1;
-      const perpX = -toPlayer.z * dodgeDir;
-      const perpZ = toPlayer.x * dodgeDir;
+      // Early waves: enemies barely react. Later waves: aggressive evasion
+      if (waveMultiplier < 0.4) {
+        // Wave 1-2: Light evasion - just drift sideways a bit
+        const dodgeDir = Math.sin(e.flyAngle * 5) > 0 ? 1 : -1;
+        e.mesh.position.x += -toPlayer.z * dodgeDir * evadeSpeed * 0.3;
+        e.mesh.position.z += toPlayer.x * dodgeDir * evadeSpeed * 0.3;
+      } else if (waveMultiplier < 0.8) {
+        // Wave 3-4: Moderate evasion - dodge and change altitude
+        const dodgeDir = Math.sin(e.flyAngle * 8) > 0 ? 1 : -1;
+        const perpX = -toPlayer.z * dodgeDir;
+        const perpZ = toPlayer.x * dodgeDir;
+        e.mesh.position.x += perpX * evadeSpeed * 0.6;
+        e.mesh.position.z += perpZ * evadeSpeed * 0.6;
+        e.mesh.position.y += Math.sin(e.flyAngle * 6) * 1.5;
+      } else {
+        // Wave 5+: Full evasion - aggressive escape maneuvers
+        const dodgeDir = Math.sin(e.flyAngle * 10) > 0 ? 1 : -1;
+        const perpX = -toPlayer.z * dodgeDir;
+        const perpZ = toPlayer.x * dodgeDir;
 
-      // Move sideways and away from player's back camera view
-      e.mesh.position.x += perpX * evadeSpeed + toPlayer.x * evadeSpeed * 0.3;
-      e.mesh.position.z += perpZ * evadeSpeed + toPlayer.z * evadeSpeed * 0.3;
+        // Move sideways and away from player's back camera view
+        e.mesh.position.x += perpX * evadeSpeed + toPlayer.x * evadeSpeed * 0.3;
+        e.mesh.position.z += perpZ * evadeSpeed + toPlayer.z * evadeSpeed * 0.3;
 
-      // Rapid altitude change to escape targeting
-      e.mesh.position.y += (Math.sin(e.flyAngle * 8) * 3);
+        // Rapid altitude change to escape targeting
+        e.mesh.position.y += Math.sin(e.flyAngle * 8) * 3;
 
-      // Try to get out of back camera view by moving to player's side
-      const escapeAngle = yaw + (dodgeDir * Math.PI / 2); // Move to player's side
-      e.mesh.position.x += Math.sin(escapeAngle) * evadeSpeed * 0.5;
-      e.mesh.position.z += Math.cos(escapeAngle) * evadeSpeed * 0.5;
+        // Try to get out of back camera view by moving to player's side
+        const escapeAngle = yaw + (dodgeDir * Math.PI / 2);
+        e.mesh.position.x += Math.sin(escapeAngle) * evadeSpeed * 0.5;
+        e.mesh.position.z += Math.cos(escapeAngle) * evadeSpeed * 0.5;
+      }
     } else {
       // Normal movement
       if (dist > 30) {
